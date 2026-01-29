@@ -1,0 +1,33 @@
+model_parameters:
+  onnx_model: '/data/model_split.onnx'
+  march: 'bayes-e'
+  working_dir: '/data/output/build_cache'
+  output_model_file_prefix: 'yolov11_final'
+  layer_out_dump: False
+  
+  # 【核心】Softmax BPU 优化
+  node_info: {
+    "/model.10/m/m.0/attn/Softmax": {
+      'ON': 'BPU', 
+      'InputType': 'int16', 
+      'OutputType': 'int16'
+    }
+  }
+
+input_parameters:
+  input_type_rt: 'nv12'
+  input_type_train: 'rgb'
+  input_layout_train: 'NCHW'
+  norm_type: 'data_scale'
+  scale_value: 0.003921568627451
+  input_shape: '1x3x640x640'
+
+calibration_parameters:
+  cal_data_dir: '/data/scripts/calib_processed'
+  cal_data_type: 'float32'
+  calibration_type: 'default'
+
+compiler_parameters:
+  compile_mode: 'latency'
+  debug: False
+  optimize_level: 'O3'

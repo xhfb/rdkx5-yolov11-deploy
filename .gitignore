@@ -1,0 +1,40 @@
+# 1. 忽略 Python 编译文件和缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 2. 忽略虚拟环境 (体积巨大，绝对不能传)
+venv_rdk/
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# 3. 忽略运行结果 (runs 目录下的所有生成的模型和日志)
+runs/
+output/
+
+# 4. 忽略大模型文件 (防止 push 失败)
+*.pt
+*.onnx
+*.bin
+*.engine
+*.trt
+
+# 5. 忽略数据集和校准图片
+coco_calib/
+images/
+source_images/
+datasets/
+
+# 6. 忽略 IDE 配置 (个人配置不需要同步)
+.vscode/
+.idea/
+*.swp
+
+# 7. 忽略系统文件
+.DS_Store
+Thumbs.db
