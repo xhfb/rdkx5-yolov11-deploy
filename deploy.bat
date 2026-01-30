@@ -18,6 +18,8 @@ if "%~1"=="" goto interactive_mode
 
 :parse_loop
 if "%~1"=="" goto check_params
+if "%~1"=="-h" goto show_help
+if "%~1"=="--help" goto show_help
 if "%~1"=="--model" (
     set "MODEL=%~2"
     shift
@@ -152,3 +154,42 @@ if %errorlevel%==0 (
 
 echo.
 pause
+goto :eof
+
+:: ------------------------------------------
+:: Help Information
+:: ------------------------------------------
+:show_help
+echo.
+echo ========================================================
+echo        RDK X5 YOLOv11 Deploy Tool - Help
+echo ========================================================
+echo.
+echo Usage: deploy.bat [OPTIONS]
+echo.
+echo Options:
+echo   -h, --help              Show this help message and exit
+echo   --model ^<path^>          Path to the YOLOv11 .pt model file
+echo   --calibrate_images ^<path^>  Path to the calibration images folder
+echo.
+echo Examples:
+echo   deploy.bat
+echo       Run in interactive mode (prompts for input)
+echo.
+echo   deploy.bat --model C:\models\yolov11n.pt --calibrate_images C:\images\calib
+echo       Run with specified model and calibration images
+echo.
+echo   deploy.bat -h
+echo       Show this help message
+echo.
+echo Description:
+echo   This tool converts YOLOv11 PyTorch models (.pt) to RDK X5 compatible
+echo   format using Docker-based AI toolchain. The converted model files
+echo   will be saved in the runs\ directory with a timestamp.
+echo.
+echo Requirements:
+echo   - Docker Desktop installed and running
+echo   - YOLOv11 .pt model file
+echo   - Calibration images folder (for quantization)
+echo.
+goto :eof

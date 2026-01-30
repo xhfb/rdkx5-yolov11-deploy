@@ -4,9 +4,9 @@ import os
 
 try:
     print("Loading model...")
-    model = YOLO('/data/runs/run_20260130_055153/yolov11n_20250629.pt')
+    model = YOLO('/data/runs/run_20260130_140604/yolo11n.pt')
     
-    save_dir = '/data/runs/run_20260130_055153'
+    save_dir = '/data/runs/run_20260130_140604'
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, 'model_split.onnx')
     
@@ -20,7 +20,7 @@ try:
         half=False
     )
     
-    exported_file = '/data/runs/run_20260130_055153/yolov11n_20250629.pt'.replace('.pt', '.onnx')
+    exported_file = '/data/runs/run_20260130_140604/yolo11n.pt'.replace('.pt', '.onnx')
     if os.path.exists(exported_file):
         os.rename(exported_file, save_path)
         print("Moved ONNX to output dir.")

@@ -1,0 +1,14 @@
+# 强制 shell 脚本使用 LF (Linux 换行符)
+*.sh text eol=lf
+*.bash text eol=lf
+
+# 强制 Python 脚本使用 LF (保持统一，虽然 Python 对 CRLF 宽容)
+*.py text eol=lf
+
+# 配置文件也建议 LF
+*.yaml text eol=lf
+*.yml text eol=lf
+*.txt text eol=lf
+
+# Windows 批处理必须是 CRLF
+*.bat text eol=crlf
