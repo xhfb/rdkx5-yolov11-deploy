@@ -22,8 +22,44 @@ NC='\033[0m' # No Color
 MODEL=""
 CALIB=""
 
+show_help() {
+    echo ""
+    echo "========================================================"
+    echo "       RDK X5 YOLOv11 Deploy Tool - Help"
+    echo "========================================================"
+    echo ""
+    echo "Usage: deploy.sh [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help                 Show this help message and exit"
+    echo "  --model <path>             Path to the YOLOv11 .pt model file"
+    echo "  --calibrate_images <path>  Path to the calibration images folder"
+    echo ""
+    echo "Examples:"
+    echo "  ./deploy.sh"
+    echo "      Run in interactive mode (prompts for input)"
+    echo ""
+    echo "  ./deploy.sh --model /path/to/yolov11n.pt --calibrate_images /path/to/calib"
+    echo "      Run with specified model and calibration images"
+    echo ""
+    echo "  ./deploy.sh -h"
+    echo "      Show this help message"
+    echo ""
+    echo "Description:"
+    echo "  This tool converts YOLOv11 PyTorch models (.pt) to RDK X5 compatible"
+    echo "  format using Docker-based AI toolchain. The converted model files"
+    echo "  will be saved in the runs/ directory with a timestamp."
+    echo ""
+    echo "Requirements:"
+    echo "  - Docker installed and running"
+    echo "  - YOLOv11 .pt model file"
+    echo "  - Calibration images folder (for quantization)"
+    echo ""
+}
+
 while [[ "$#" -gt 0 ]]; do
     case $1 in
+        -h|--help) show_help; exit 0 ;;
         --model) MODEL="$2"; shift ;;
         --calibrate_images) CALIB="$2"; shift ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;

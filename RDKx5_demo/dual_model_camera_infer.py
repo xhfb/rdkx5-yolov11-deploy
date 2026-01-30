@@ -364,6 +364,11 @@ class InferenceThread(threading.Thread):
         self.output_queue = output_queue
         self.running = True
         self.daemon = True
+        
+        # 最新结果（线程安全）
+        self.latest_result = None
+        self.result_lock = threading.Lock()
+        self.latest_frame_id = -1
     
     def run(self):
         """线程主循环"""
@@ -381,14 +386,27 @@ class InferenceThread(threading.Thread):
                     frame, nv12_data, preprocess_info
                 )
                 
-                # 将结果放入输出队列
-                self.output_queue.put((frame_id, boxes, scores, classes))
+                # 更新最新结果
+                with self.result_lock:
+                    self.latest_result = (boxes, scores, classes)
+                    self.latest_frame_id = frame_id
+                
+                # 将结果放入输出队列（非阻塞）
+                try:
+                    self.output_queue.put_nowait((frame_id, boxes, scores, classes))
+                except:
+                    pass  # 队列满则跳过
                 
             except Exception as e:
                 if self.running:
                     # 队列超时是正常的，其他异常需要记录
                     if "Empty" not in str(type(e).__name__):
                         print(f"⚠️ [{self.name}] 推理异常: {e}")
+    
+    def get_latest_result(self):
+        """获取最新的推理结果"""
+        with self.result_lock:
+            return self.latest_result, self.latest_frame_id
     
     def stop(self):
         """停止线程"""
@@ -529,6 +547,24 @@ class DualModelInference:
             result1: (boxes, scores, classes) 或 None
             result2: (boxes, scores, classes) 或 None
         """
+        # 直接从线程获取最新结果
+        result1, fid1 = self.thread1.get_latest_result()
+        result2, fid2 = self.thread2.get_latest_result()
+        
+        return result1, result2
+    
+    def get_results_blocking(self, frame_id, timeout=0.1):
+        """
+        阻塞式获取推理结果（等待指定帧的结果）
+        
+        Args:
+            frame_id: 帧ID
+            timeout: 超时时间
+        
+        Returns:
+            result1: (boxes, scores, classes) 或 None
+            result2: (boxes, scores, classes) 或 None
+        """
         result1 = None
         result2 = None
         
@@ -644,10 +680,6 @@ def main():
     fps_list = []
     frame_count = 0
     
-    # 上一帧的结果（用于平滑显示）
-    last_result1 = None
-    last_result2 = None
-    
     try:
         while True:
             # 读取帧
@@ -662,18 +694,16 @@ def main():
             # 提交帧进行推理
             dual_infer.submit_frame(frame, frame_count)
             
-            # 获取推理结果
-            result1, result2 = dual_infer.get_results(frame_count)
+            # 等待一小段时间让推理线程有机会处理
+            # 这是关键：给BPU推理留出时间
+            time.sleep(0.01)
             
-            # 使用最新结果或上一帧结果
-            if result1 is not None:
-                last_result1 = result1
-            if result2 is not None:
-                last_result2 = result2
+            # 获取推理结果（直接获取线程的最新结果）
+            result1, result2 = dual_infer.get_results(frame_count)
             
             # 绘制结果
             result_frame = frame.copy()
-            result_frame = dual_infer.draw_results(result_frame, last_result1, last_result2)
+            result_frame = dual_infer.draw_results(result_frame, result1, result2)
             
             # 计算FPS
             elapsed = time.time() - start
@@ -684,8 +714,8 @@ def main():
             avg_fps = np.mean(fps_list)
             
             # 统计检测数量
-            count1 = len(last_result1[0]) if last_result1 is not None else 0
-            count2 = len(last_result2[0]) if last_result2 is not None else 0
+            count1 = len(result1[0]) if result1 is not None else 0
+            count2 = len(result2[0]) if result2 is not None else 0
             
             # 在图片上显示FPS和检测数量
             cv2.putText(result_frame, f"FPS: {avg_fps:.1f}", (10, 30),
@@ -852,33 +882,29 @@ def main_sync():
 if __name__ == '__main__':
     import argparse
     
-    parser = argparse.ArgumentParser(description='双模型摄像头实时检测')
-    parser.add_argument('--sync', action='store_true',
-                        help='使用同步模式（不使用多线程）')
-    parser.add_argument('--model1', type=str,
-                        default='/home/sunrise/RDK_infer/yolov11/yolov11_model1.bin',
-                        help='模型1路径')
-    parser.add_argument('--model2', type=str,
-                        default='/home/sunrise/RDK_infer/yolov11/yolov11_model2.bin',
-                        help='模型2路径')
-    parser.add_argument('--conf1', type=float, default=0.3,
-                        help='模型1置信度阈值')
-    parser.add_argument('--conf2', type=float, default=0.3,
-                        help='模型2置信度阈值')
-    parser.add_argument('--cls1', type=int, default=80,
-                        help='模型1类别数量')
-    parser.add_argument('--cls2', type=int, default=80,
-                        help='模型2类别数量')
-    parser.add_argument('--camera', type=int, default=0,
-                        help='摄像头ID (USB=0, MIPI=8)')
+    # parser = argparse.ArgumentParser(description='双模型摄像头实时检测')
+    # parser.add_argument('--sync', action='store_true',
+    #                     help='使用同步模式（不使用多线程）')
+    # parser.add_argument('--model1', type=str,
+    #                     default='/home/sunrise/RDK_infer/yolov11/yolov11_model1.bin',
+    #                     help='模型1路径')
+    # parser.add_argument('--model2', type=str,
+    #                     default='/home/sunrise/RDK_infer/yolov11/yolov11_model2.bin',
+    #                     help='模型2路径')
+    # parser.add_argument('--conf1', type=float, default=0.3,
+    #                     help='模型1置信度阈值')
+    # parser.add_argument('--conf2', type=float, default=0.3,
+    #                     help='模型2置信度阈值')
+    # parser.add_argument('--cls1', type=int, default=80,
+    #                     help='模型1类别数量')
+    # parser.add_argument('--cls2', type=int, default=80,
+    #                     help='模型2类别数量')
+    # parser.add_argument('--camera', type=int, default=0,
+    #                     help='摄像头ID (USB=0, MIPI=8)')
     
-    args = parser.parse_args()
+    # args = parser.parse_args()
     
-    if args.sync:
-        # 同步模式
-        main_sync()
-    else:
-        # 多线程模式（需要修改main函数以支持命令行参数）
-        # 这里简化处理，直接调用main()
-        # 如需使用命令行参数，可以修改main()函数接收参数
-        main()
+
+    #main_sync()
+
+    main()
